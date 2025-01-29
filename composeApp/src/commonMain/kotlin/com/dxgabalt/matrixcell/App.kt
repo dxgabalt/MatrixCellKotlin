@@ -15,6 +15,9 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.transitions.ScaleTransition
+import com.dxgabalt.matrixcell.network.DeviceRepository
+import com.dxgabalt.matrixcell.network.SocketManager
+import com.dxgabalt.matrixcell.viewmodels.UnlockRequestViewModel
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
@@ -31,10 +34,18 @@ fun App() {
 class UnlockRequestScreen:Screen{
     @Composable
     override fun Content() {
+        val imei = GetAndroidId().getDeviceIdentifier()
         val navigator:Navigator = LocalNavigator.currentOrThrow
         var codigoId by remember { mutableStateOf("") }
         var voucherPago by remember { mutableStateOf("") }
         var emergencyCode by remember { mutableStateOf("") }
+        val coroutineScope = rememberCoroutineScope()
+        val socketManager = SocketManager() // Instancia de SocketManager
+        socketManager.initSocket("https://matrixcell.onrender.com", imei) // Iniciar socket con los parámetros
+        val deviceRepository = DeviceRepository(socketManager) // Pasar la instancia de SocketManager al repository
+        var unlockRequestViewModel = UnlockRequestViewModel(deviceRepository)
+        // Observa los mensajes recibidos del WebSocket
+        val webSocketMessages = unlockRequestViewModel.webSocketMessages.collectAsState(initial = "")
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -44,7 +55,8 @@ class UnlockRequestScreen:Screen{
         ) {
             Text("Solicitud de Desbloqueo", fontSize = 24.sp, style = MaterialTheme.typography.h6)
             Spacer(modifier = Modifier.height(16.dp))
-
+            Text("Android ID: ${imei}", fontSize = 14.sp, style = MaterialTheme.typography.h6)
+            Spacer(modifier = Modifier.height(16.dp))
             // Código ID
             OutlinedTextField(
                 value = codigoId,
@@ -83,7 +95,7 @@ class UnlockRequestScreen:Screen{
             // Botones
             Button(
                 onClick = {
-                    navigator.push(BlockAppScreen())
+                    unlockRequestViewModel.handleSubmit(codigoId,voucherPago,imei,navigator)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -91,7 +103,9 @@ class UnlockRequestScreen:Screen{
             }
             Spacer(modifier = Modifier.height(8.dp))
 
-           /* if (isEmergencyEnabled) {
+            // Estado del WebSocket
+            Text(text = webSocketMessages.value, fontSize = 14.sp, color = MaterialTheme.colors.primary)
+            /* if (isEmergencyEnabled) {
                 Button(
                     onClick = { viewModel.handleEmergencyCode(emergencyCode, onNavigateToBlockScreen) },
                     modifier = Modifier.fillMaxWidth()
