@@ -6,26 +6,28 @@ import cafe.adriel.voyager.navigator.Navigator
 import com.dxgabalt.matrixcell.ApiClient
 import com.dxgabalt.matrixcell.BlockAppScreen
 import com.dxgabalt.matrixcell.network.DeviceRepository
+import com.dxgabalt.matrixcell.network.DeviceStatusStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import com.russhwolf.settings.Settings
+import com.dxgabalt.matrixcell.DeviceManager
 
 class UnlockRequestViewModel(
     private val deviceRepository: DeviceRepository
-) : ViewModel()  {
+) : ViewModel() {
 
     private val apiClient = ApiClient()
 
     private val _errorMessage = MutableStateFlow("")
     private val _webSocketMessages = MutableStateFlow("")
-    val webSocketMessages: StateFlow<String> get() = _webSocketMessages
     private val _isEmergencyEnabled = MutableStateFlow(false)
-
+    val settings = Settings()  // Inicializamos Settings
+    val storage = DeviceStatusStorage(settings)  // Pasamos Settings al almacenamiento
     fun handleSubmit(
         codigoId: String,
         voucherPago: String,
-        imei:String,
+        imei: String,
         navigator: Navigator,
     ) {
         if (codigoId.isBlank() || voucherPago.isBlank()) {
@@ -37,24 +39,34 @@ class UnlockRequestViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val ip = ""      // Dinámico
-                val response = apiClient.unlockRequest(codigoId, voucherPago, imei, ip)
-                if (response.status == "success") {
-                    navigator.push(BlockAppScreen())
-                } else {
-                    _errorMessage.value = response.message
-                    _isEmergencyEnabled.value = true
+                val online = DeviceManager().getInternetConnection()
+                if(online){
+                    val response = apiClient.unlockRequest(codigoId, voucherPago, imei, ip)
+                    if (response.status == "success") {
+                        navigator.push(BlockAppScreen(storage))
+                        storage.saveDeviceStatus(response.status_device == "Bloqueado")
+                        storage.saveDeviceImei(imei)
+                    } else {
+                        _errorMessage.value = response.message
+                        _isEmergencyEnabled.value = true
+                    }
+                }else{
+                    navigator.push(BlockAppScreen(storage))
                 }
+
             } catch (e: Exception) {
                 _errorMessage.value = "Error al conectar con el servidor. Inténtelo de nuevo."
                 _isEmergencyEnabled.value = true
             }
         }
     }
+
     fun handleValidationSubmit(
         codigo: String,
+        imei: String,
         navigator: Navigator,
     ) {
-        if (codigo.isBlank() ) {
+        if (codigo.isBlank()) {
             _errorMessage.value = "Por favor, complete todos los campos."
             return
         }
@@ -62,15 +74,21 @@ class UnlockRequestViewModel(
         // Usa el viewModelScope para manejar el ciclo de vida
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val imei = "123456789012345" // Dinámico
-                val ip = "192.168.0.1"      // Dinámico
-                val response = apiClient.unlockValidate(codigo, imei)
-                if (response.status == "success") {
-                    navigator.push(BlockAppScreen())
-                } else {
-                    _errorMessage.value = response.message
-                    _isEmergencyEnabled.value = true
+                val ip = ""      // Dinámico
+                val online = DeviceManager().getInternetConnection()
+                if(online){
+                    val response = apiClient.unlockValidate(codigo, imei)
+
+                    if (response.status == "success") {
+                        navigator.push(BlockAppScreen(storage))
+                    } else {
+                        _errorMessage.value = response.message
+                        _isEmergencyEnabled.value = true
+                    }
+                }else{
+                    navigator.push(BlockAppScreen(storage))
                 }
+
             } catch (e: Exception) {
                 _errorMessage.value = "Error al conectar con el servidor. Inténtelo de nuevo."
                 _isEmergencyEnabled.value = true
@@ -80,7 +98,7 @@ class UnlockRequestViewModel(
 
     fun handleEmergencyCode(emergencyCode: String, navigator: Navigator) {
         if (emergencyCode == "Matrixcell2025") {
-            navigator.push(BlockAppScreen())
+            navigator.push(BlockAppScreen(storage))
         } else {
             _errorMessage.value = "Código de emergencia incorrecto."
         }

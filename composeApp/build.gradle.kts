@@ -45,6 +45,7 @@ kotlin {
             implementation(libs.kotlin.serialization)
             implementation("io.ktor:ktor-client-websockets:2.3.3")
             implementation("io.socket:socket.io-client:2.0.0")
+            implementation(libs.settings)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)

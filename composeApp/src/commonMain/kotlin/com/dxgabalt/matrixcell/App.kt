@@ -16,6 +16,7 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.transitions.ScaleTransition
 import com.dxgabalt.matrixcell.network.DeviceRepository
+import com.dxgabalt.matrixcell.network.DeviceStatusStorage
 import com.dxgabalt.matrixcell.network.SocketManager
 import com.dxgabalt.matrixcell.viewmodels.UnlockRequestViewModel
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -23,6 +24,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 @Composable
 @Preview
 fun App() {
+
     MaterialTheme {
         Navigator(screen = UnlockRequestScreen()){
             navigator ->  //SlideTransition(navigator)
@@ -40,12 +42,11 @@ class UnlockRequestScreen:Screen{
         var voucherPago by remember { mutableStateOf("") }
         var emergencyCode by remember { mutableStateOf("") }
         val coroutineScope = rememberCoroutineScope()
-        val socketManager = SocketManager() // Instancia de SocketManager
+        val socketManager = SocketManager(coroutineScope) // Instancia de SocketManager
         socketManager.initSocket("https://matrixcell.onrender.com", imei) // Iniciar socket con los parámetros
         val deviceRepository = DeviceRepository(socketManager) // Pasar la instancia de SocketManager al repository
         var unlockRequestViewModel = UnlockRequestViewModel(deviceRepository)
         // Observa los mensajes recibidos del WebSocket
-        val webSocketMessages = unlockRequestViewModel.webSocketMessages.collectAsState(initial = "")
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -103,8 +104,6 @@ class UnlockRequestScreen:Screen{
             }
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Estado del WebSocket
-            Text(text = webSocketMessages.value, fontSize = 14.sp, color = MaterialTheme.colors.primary)
             /* if (isEmergencyEnabled) {
                 Button(
                     onClick = { viewModel.handleEmergencyCode(emergencyCode, onNavigateToBlockScreen) },

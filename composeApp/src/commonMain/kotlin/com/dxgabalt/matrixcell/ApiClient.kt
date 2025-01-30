@@ -44,7 +44,7 @@ class ApiClient {
             }.body()
         } catch (e: Exception) {
             println("Error en la solicitud: ${e.message}")
-            ApiResponse(status = "Error", message = "Error: ${e.message}")
+            ApiResponse(status = "Error", message = "Error: ${e.message}",status_device = "Bloqueado")
         }
     }
 
@@ -65,7 +65,7 @@ class ApiClient {
             }.body()
         } catch (e: Exception) {
             println("Error en la solicitud: ${e.message}")
-            ApiResponse(status = "Error", message = "Error: ${e.message}")
+            ApiResponse(status = "Error", message = "Error: ${e.message}", status_device = "Bloqueado")
         }
     }
 }
@@ -86,5 +86,6 @@ val imei: String,
 @Serializable
 data class ApiResponse(
     val status: String,
-    val message: String
+    val message: String,
+    val status_device:String,
 )

@@ -2,13 +2,20 @@ package com.dxgabalt.matrixcell.network
 
 import io.socket.client.IO
 import io.socket.client.Socket
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import com.dxgabalt.matrixcell.DeviceManager
+import com.russhwolf.settings.Settings
 
-class SocketManager {
+class SocketManager(private val coroutineScope: CoroutineScope) {
     private var socket: Socket? = null
     private val _deviceStatus = MutableStateFlow<DeviceStatus>(DeviceStatus.Unknown)
     val deviceStatus: StateFlow<DeviceStatus> = _deviceStatus
+    private val settings = Settings()  // Inicializamos Settings
+    private val storage = DeviceStatusStorage(settings)  // Pasamos Settings al almacenamiento
 
     fun initSocket(serverUrl: String, androidId: String) {
         try {
@@ -18,7 +25,6 @@ class SocketManager {
             }
 
             socket = IO.socket(serverUrl, options)
-
             setupSocketEvents(androidId)
             socket?.connect()
         } catch (e: Exception) {
@@ -38,12 +44,24 @@ class SocketManager {
             on("device-blocked") { args ->
                 val data = args.firstOrNull()?.toString()
                 _deviceStatus.value = DeviceStatus.Blocked(data ?: "Device blocked")
+                DeviceManager().blockDevice()
+
+                // Lanzar corutina para guardar el estado
+                coroutineScope.launch {
+                    storage.saveDeviceStatus(true)
+                }
             }
 
             // Manejar evento de desbloqueo
             on("device-unblocked") { args ->
                 val data = args.firstOrNull()?.toString()
                 _deviceStatus.value = DeviceStatus.Unblocked(data ?: "Device unblocked")
+                DeviceManager().unblockDevice()
+
+                // Lanzar corutina para guardar el estado
+                coroutineScope.launch {
+                    storage.saveDeviceStatus(false)
+                }
             }
 
             // Manejar desconexión
