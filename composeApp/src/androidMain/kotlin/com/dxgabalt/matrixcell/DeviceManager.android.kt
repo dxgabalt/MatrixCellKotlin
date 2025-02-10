@@ -27,24 +27,32 @@ actual class DeviceManager {
          }
     }
 
-    actual fun unblockDevice() {
-         if (devicePolicyManager.isAdminActive(componentName)) {
-             // Finalizar el modo kiosco si está activo
-             try {
-                 (context as? ComponentActivity)?.stopLockTask()
-                 Toast.makeText(context, "🔓 Modo kiosco desactivado.", Toast.LENGTH_SHORT).show()
-             } catch (e: Exception) {
-                 Toast.makeText(context, "❌ Error al salir del modo kiosco: ${e.message}", Toast.LENGTH_SHORT).show()
-             }
+   actual fun unblockDevice() {
+    if (devicePolicyManager.isAdminActive(componentName)) {
+        try {
+            // Finalizar el modo kiosco si está activo
+            devicePolicyManager.setLockTaskPackages(componentName, emptyArray())
+            Toast.makeText(context, "🔓 Modo kiosco desactivado.", Toast.LENGTH_SHORT).show()
+            // Verificar que el permiso de Administrador sigue activo
+            if (!devicePolicyManager.isAdminActive(componentName)) {
+                val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
+                intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Es necesario para seguir administrando el dispositivo.")
+                context.startActivity(intent)
+            }
 
-             Toast.makeText(context, "✅ Dispositivo Desbloqueado", Toast.LENGTH_SHORT).show()
-         } else {
-             Toast.makeText(context, "❌ No tienes permisos de administrador para desbloquear.", Toast.LENGTH_SHORT).show()
-         }
+            Toast.makeText(context, "✅ Dispositivo Desbloqueado", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "❌ Error al salir del modo kiosco: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    } else {
+        Toast.makeText(context, "❌ No tienes permisos de administrador para desbloquear.", Toast.LENGTH_SHORT).show()
     }
+}
+
     actual fun navigateToPayments(){
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://matrix-cell.com/payments"))
-        context.startActivity(intent)
+       // val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://matrix-cell.com/payments"))
+      //  context.startActivity(intent)
     }
     actual fun checkInternetConnection(){
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

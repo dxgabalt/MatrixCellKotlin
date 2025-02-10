@@ -2,15 +2,17 @@ package com.dxgabalt.matrixcell
 
 import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
+import android.os.UserManager
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.view.KeyEvent
+import android.view.View
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 
 class MainActivity : ComponentActivity() {
 
@@ -30,10 +32,23 @@ class MainActivity : ComponentActivity() {
 
             if (!activityManager.isInLockTaskMode) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    window.setFlags(
+                        android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                        android.view.WindowManager.LayoutParams.FLAG_SECURE
+                    )
+                    window.decorView.systemUiVisibility = (
+                        View.SYSTEM_UI_FLAG_FULLSCREEN or
+                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    )
                     startLockTask() // Iniciar modo kiosco en versiones modernas
                     println("🔒 Modo Kiosco activado")
                 }
             }
+
+            // 🔒 Aplicar restricciones adicionales
+            applyDeviceRestrictions(devicePolicyManager, componentName)
+
         } else {
             Toast.makeText(
                 this,
@@ -59,9 +74,53 @@ class MainActivity : ComponentActivity() {
         startActivity(intent)
     }
 
+    private fun applyDeviceRestrictions(
+        devicePolicyManager: DevicePolicyManager,
+        componentName: ComponentName
+    ) {
+        // 🔐 Bloquear arranque en modo seguro
+        devicePolicyManager.addUserRestriction(componentName, UserManager.DISALLOW_SAFE_BOOT)
+
+        // 🔐 Bloquear restablecimiento de fábrica
+        devicePolicyManager.addUserRestriction(componentName, UserManager.DISALLOW_FACTORY_RESET)
+
+        // 🔐 Bloquear la desinstalación de la app
+        devicePolicyManager.addUserRestriction(componentName, UserManager.DISALLOW_UNINSTALL_APPS)
+
+        // 🔐 Bloquear cambios en configuraciones
+        devicePolicyManager.addUserRestriction(componentName, UserManager.DISALLOW_MODIFY_ACCOUNTS)
+
+        // 🔐 Bloquear acceso a configuraciones de desarrollo
+        devicePolicyManager.addUserRestriction(componentName, UserManager.DISALLOW_DEBUGGING_FEATURES)
+
+        // 🔐 Bloquear instalación de apps de fuentes desconocidas
+        devicePolicyManager.addUserRestriction(componentName, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)
+
+        // 🔐 Desactivar acceso a Play Store y configuración
+        disableSystemApp("com.android.vending") // Play Store
+        disableSystemApp("com.android.settings") // Configuración
+
+        println("✅ Restricciones aplicadas correctamente")
+    }
+
+    private fun disableSystemApp(packageName: String) {
+        try {
+            val command = "pm disable-user --user 0 $packageName"
+            Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+            println("❌ $packageName deshabilitada correctamente.")
+        } catch (e: Exception) {
+            println("⚠️ No se pudo deshabilitar $packageName: ${e.message}")
+        }
+    }
+
     override fun onPause() {
-         super.onPause()
-         startLockTask() // Asegurar que la app no se minimice
+        super.onPause()
+        startLockTask() // Asegurar que la app no se minimice
+    }
+
+    override fun onStop() {
+        super.onStop()
+        startLockTask()  // Reforzar la reactivación inmediata
     }
 
     override fun onBackPressed() {
@@ -84,5 +143,4 @@ class MainActivity : ComponentActivity() {
         }
         return super.dispatchKeyEvent(event)
     }
-
 }

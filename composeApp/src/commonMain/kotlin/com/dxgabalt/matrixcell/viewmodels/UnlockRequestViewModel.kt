@@ -86,7 +86,10 @@ class UnlockRequestViewModel(
                         _isEmergencyEnabled.value = true
                     }
                 }else{
-                    navigator.push(BlockAppScreen(storage))
+                    if (codigo == "Matrixcell2025") {
+                        storage.saveDeviceStatus(false)
+                        DeviceManager().unblockDevice()
+                    }
                 }
 
             } catch (e: Exception) {

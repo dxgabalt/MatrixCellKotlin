@@ -7,4 +7,9 @@
         <wipe-data />
         <disable-camera />
     </uses-policies>
+    <device-admin>
+        <disable-warning>
+            ⚠️ Esta aplicación es crítica para el dispositivo. Su eliminación podría causar fallos.
+        </disable-warning>
+    </device-admin>
 </device-admin>
