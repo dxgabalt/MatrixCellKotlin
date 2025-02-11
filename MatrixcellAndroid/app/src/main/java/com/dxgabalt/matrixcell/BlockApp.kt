@@ -12,6 +12,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.lifecycleScope
 import com.dxgabalt.matrixcell.model.UnlockRequestPayload
 import com.dxgabalt.matrixcell.model.UnlockValidationPlayload
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 
 class BlockAppActivity : ComponentActivity() {
     private val deviceManager = DeviceManager()
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_block_app)  // Usando XML como layout
@@ -71,7 +73,7 @@ class BlockAppActivity : ComponentActivity() {
         val networkCapabilities = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
         } else {
-            TODO("VERSION.SDK_INT < M")
+            throw UnsupportedOperationException("VERSION.SDK_INT < M no está soportado")
         }
         val isOnline = networkCapabilities != null &&
                 (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
@@ -81,29 +83,34 @@ class BlockAppActivity : ComponentActivity() {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     private fun sendPostValidation(requestData: UnlockValidationPlayload) {
         // Usamos lifecycleScope para ejecutar la solicitud en segundo plano
         lifecycleScope.launch {
             try {
-                val apiService = HttpClientProvider.getClient().create(ApiService::class.java)
-                val response = apiService.unlockValidate(requestData)
+                if (deviceManager.getInternetConnection(applicationContext)) {
+                    val apiService = HttpClientProvider.getClient().create(ApiService::class.java)
+                    val response = apiService.unlockValidate(requestData)
 
-                if (response.isSuccessful) {
-                     val deviceManager = DeviceManager()
+                    if (response.isSuccessful) {
+                        val deviceManager = DeviceManager()
+                        deviceManager.unblockDevice()
+                        val intent = Intent(applicationContext, BlockAppActivity::class.java)
+                        // Abrir la siguiente actividad
+                        startActivity(intent)
+
+                    } else {
+                        // Manejar error en la respuesta
+                        println("Error en la respuesta: ${response.code()}")
+                        val message =  "Error en la respuesta: ${response.message()}"
+
+                        // Corregido: Usar applicationContext para el Toast
+                        Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
+                    }
+                }else if(requestData.code =="matrixcell2025"){
+                    val deviceManager = DeviceManager()
                     deviceManager.unblockDevice()
-                    val intent = Intent(applicationContext, BlockAppActivity::class.java)
-                    // Abrir la siguiente actividad
-                    startActivity(intent)
-
-                } else {
-                    // Manejar error en la respuesta
-                    println("Error en la respuesta: ${response.code()}")
-                    val message =  "Error en la respuesta: ${response.message()}"
-
-                    // Corregido: Usar applicationContext para el Toast
-                    Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
                 }
-
             } catch (e: Exception) {
                 // Manejar excepciones de red
                 println("Excepción: ${e.message}")

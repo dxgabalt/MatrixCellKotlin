@@ -1,10 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_APPS_CONTROL" />
+    <uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_BLOCK_UNINSTALL" />
+    <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN"
+        tools:ignore="ProtectedPermissions" />
+
 
     <application
         android:allowBackup="true"
@@ -16,6 +21,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Matrixcell"
         tools:targetApi="31">
+
+        <!-- Receptor de administrador de dispositivo -->
         <receiver
             android:name=".MyDeviceAdminReceiver"
             android:description="@string/app_name"
@@ -29,19 +36,18 @@
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".BootReceiver" android:enabled="true" android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
+        <!-- Otros receptores y servicios -->
+
         <service android:name=".BackgroundMonitorService"
             android:enabled="true"
             android:exported="false" />
+
         <activity
             android:name=".BlockAppActivity"
             android:exported="false"
             android:label="@string/title_activity_block_app"
             android:theme="@style/Theme.Matrixcell" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -49,7 +55,6 @@
             android:theme="@style/Theme.Matrixcell">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

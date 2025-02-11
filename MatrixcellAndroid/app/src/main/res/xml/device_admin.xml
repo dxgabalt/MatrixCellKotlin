@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+<device-admin>
     <uses-policies>
+        <!-- Habilitar las políticas necesarias para el kiosco -->
         <limit-password />
-        <watch-login />
-        <reset-password />
-        <force-lock />
         <wipe-data />
+        <force-lock />
+        <reset-password />
+        <set-global-proxy />
+        <set-time-zone />
+        <install-package />
+        <uninstall-package />
     </uses-policies>
 </device-admin>
