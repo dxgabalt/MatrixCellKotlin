@@ -9,6 +9,8 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class DeviceManager {
@@ -17,38 +19,44 @@ actual class DeviceManager {
         context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
     private val componentName = ComponentName(context, MyDeviceAdminReceiver::class.java)
     actual fun blockDevice() {
-         if (devicePolicyManager.isAdminActive(componentName)) {
-             Toast.makeText(context, "🔒 Dispositivo Bloqueado", Toast.LENGTH_SHORT).show()
-
-             // Bloquear dispositivo con DevicePolicyManager (lock the screen)
-             devicePolicyManager.lockNow()
-         } else {
-             Toast.makeText(context, "❌ No tienes permisos de administrador", Toast.LENGTH_SHORT).show()
-         }
-    }
-
-   actual fun unblockDevice() {
-    if (devicePolicyManager.isAdminActive(componentName)) {
-        try {
-            // Finalizar el modo kiosco si está activo
-            devicePolicyManager.setLockTaskPackages(componentName, emptyArray())
-            Toast.makeText(context, "🔓 Modo kiosco desactivado.", Toast.LENGTH_SHORT).show()
-            // Verificar que el permiso de Administrador sigue activo
-            if (!devicePolicyManager.isAdminActive(componentName)) {
-                val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
-                intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
-                intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Es necesario para seguir administrando el dispositivo.")
-                context.startActivity(intent)
+        if (devicePolicyManager.isAdminActive(componentName)) {
+            runOnMainThread {
+                Toast.makeText(context, "🔒 Dispositivo Bloqueado", Toast.LENGTH_SHORT).show()
             }
-
-            Toast.makeText(context, "✅ Dispositivo Desbloqueado", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(context, "❌ Error al salir del modo kiosco: ${e.message}", Toast.LENGTH_SHORT).show()
+            devicePolicyManager.lockNow()
+        } else {
+            runOnMainThread {
+                Toast.makeText(context, "❌ No tienes permisos de administrador", Toast.LENGTH_SHORT).show()
+            }
         }
-    } else {
-        Toast.makeText(context, "❌ No tienes permisos de administrador para desbloquear.", Toast.LENGTH_SHORT).show()
     }
-}
+
+    fun runOnMainThread(action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            action()
+        } else {
+            Handler(Looper.getMainLooper()).post { action() }
+        }
+    }
+
+    actual fun unblockDevice() {
+        if (devicePolicyManager.isAdminActive(componentName)) {
+            try {
+                devicePolicyManager.setLockTaskPackages(componentName, emptyArray())
+                runOnMainThread {
+                    Toast.makeText(context, "🔓 Modo kiosco desactivado.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                runOnMainThread {
+                    Toast.makeText(context, "❌ Error al salir del modo kiosco: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            runOnMainThread {
+                Toast.makeText(context, "❌ No tienes permisos de administrador para desbloquear.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     actual fun navigateToPayments(){
        // val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://matrix-cell.com/payments"))
